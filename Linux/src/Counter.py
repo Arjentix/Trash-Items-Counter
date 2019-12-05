@@ -11,16 +11,39 @@ import pyinotify
 import os
 import serial
 import time
+from threading import Thread, Lock
+import serial.tools.list_ports
 
+serial_port = '/dev/ttyUSB0'
 ser = serial.Serial()
 user = ''
 trash_dir = ''
 timeout = 5
+mutex = Lock()
 
-def connect_to_serial(path):
+def check_presence(interval=1):
 	global ser
 
-	while ser.isOpen != True :
+	while True:
+		tmp = [tuple(p) for p in list(serial.tools.list_ports.comports())]
+
+		myports = []
+		if len(tmp) != 0:
+			myports = [p for p in tmp[0]]
+
+		if serial_port not in myports:
+			print('Arduino has been disconnected!')
+			connect_to_serial(ser.name)
+			time.sleep(2)
+			print_count(None)
+		time.sleep(interval)
+
+
+def connect_to_serial(path):
+	mutex.acquire()
+	global ser
+
+	while ser.isOpen != True:
 		try:
 			ser.close()
 			ser = serial.Serial(path)
@@ -28,6 +51,7 @@ def connect_to_serial(path):
 		except serial.SerialException as err:
 			print("Can't connect to the serial port '{}'. Waiting for {} seconds".format(path, timeout))
 			time.sleep(timeout)
+	mutex.release()
 
 def print_count(event):
 	global ser, trash_dir
@@ -42,12 +66,10 @@ def print_count(event):
 		connect_to_serial(ser.name)
 		print("Connection established")
 		time.sleep(2)
-		ser.write(str.encode(str(count)));
+		ser.write(str.encode(' ' + str(count)));
 
 
 if __name__ == "__main__":
-	serial_path = '/dev/ttyUSB0'
-	# global user, trash_dir
 
 	if len(sys.argv) < 2:
 		sys.exit('Run with: python3 ' + sys.argv[0] + ' $USER')
@@ -56,10 +78,13 @@ if __name__ == "__main__":
 	trash_dir = '/home/' + user + '/.local/share/Trash/files'
 
 	if len(sys.argv) >= 3:
-		serial_path = sys.argv[2]
+		serial_port = sys.argv[2]
 
-	connect_to_serial(serial_path)
+	connect_to_serial(serial_port)
 	print('Connected to ' + ser.name)
+
+
+	Thread(target = check_presence).start()
 
 	# Inital print
 	time.sleep(2)
