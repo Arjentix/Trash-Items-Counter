@@ -9,12 +9,12 @@ import functools
 import sys
 import pyinotify
 import os
-from pathlib import Path
 import serial
 import time
 
 ser = serial.Serial()
-trash_dir = str(Path.home()) + '/.local/share/Trash/files'
+user = ''
+trash_dir = ''
 timeout = 5
 
 def connect_to_serial(path):
@@ -47,9 +47,16 @@ def print_count(event):
 
 if __name__ == "__main__":
 	serial_path = '/dev/ttyUSB0'
+	# global user, trash_dir
 
-	if len(sys.argv) >= 2:
-		serial_path = sys.argv[1]
+	if len(sys.argv) < 2:
+		sys.exit('Run with: python3 ' + sys.argv[0] + ' $USER')
+	
+	user = sys.argv[1]
+	trash_dir = '/home/' + user + '/.local/share/Trash/files'
+
+	if len(sys.argv) >= 3:
+		serial_path = sys.argv[2]
 
 	connect_to_serial(serial_path)
 	print('Connected to ' + ser.name)
