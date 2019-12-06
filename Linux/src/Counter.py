@@ -9,64 +9,58 @@ import functools
 import sys
 import pyinotify
 import os
-import serial
 import time
 from threading import Thread, Lock
-import serial.tools.list_ports
 
 serial_port = '/dev/ttyUSB0'
-ser = serial.Serial()
+arduino_fd = None
 user = ''
 trash_dir = ''
 timeout = 5
 mutex = Lock()
 
-def check_presence(interval=1):
-	global ser
+def check_presence():
+	global arduino_fd
 
 	while True:
-		tmp = [tuple(p) for p in list(serial.tools.list_ports.comports())]
-
-		myports = []
-		if len(tmp) != 0:
-			myports = [p for p in tmp[0]]
-
-		if serial_port not in myports:
-			print('Arduino has been disconnected!')
-			connect_to_serial(ser.name)
+		byte_string = arduino_fd.read()
+		print("Readed: '" + byte_string.decode('utf-8') + "'")
+		if byte_string == b'':
+			print('Arduino was disconnected')
+			connect_to_serial(arduino_fd.name)
 			time.sleep(2)
 			print_count(None)
-		time.sleep(interval)
 
-
-def connect_to_serial(path):
+def connect_to_serial(path, close=True):
 	mutex.acquire()
-	global ser
+	global arduino_fd
 
-	while ser.isOpen != True:
+	while True:
 		try:
-			ser.close()
-			ser = serial.Serial(path)
-			break;
-		except serial.SerialException as err:
+			if close == True:
+				arduino_fd.close()
+
+			arduino_fd = open(path, 'rb+', buffering=0)
+			break
+		except (IOError, FileNotFoundError):
 			print("Can't connect to the serial port '{}'. Waiting for {} seconds".format(path, timeout))
 			time.sleep(timeout)
 	mutex.release()
 
 def print_count(event):
-	global ser, trash_dir
+	global arduino_fd, trash_dir
 
 	count = len(os.listdir(trash_dir))
 	print('Items in trash: {}'.format(count))
 
 	try:
-		ser.write(str.encode(' ' + str(count)));
-	except serial.SerialException as err:
+		arduino_fd.write(str.encode(' ' + str(count)))
+	except ValueError:
 		print("Failed to write to the serial port. Trying to reestablish connection...")
-		connect_to_serial(ser.name)
+		connect_to_serial(arduino_fd.name)
 		print("Connection established")
 		time.sleep(2)
-		ser.write(str.encode(' ' + str(count)));
+		arduino_fd.write(str.encode(' ' + str(count)))
 
 
 if __name__ == "__main__":
@@ -80,8 +74,12 @@ if __name__ == "__main__":
 	if len(sys.argv) >= 3:
 		serial_port = sys.argv[2]
 
-	connect_to_serial(serial_port)
-	print('Connected to ' + ser.name)
+	try:
+		arduino_fd = open(serial_port, 'rb+', buffering=0)
+	except FileNotFoundError:
+		connect_to_serial(serial_port, False)
+	
+	print('Connected to ' + arduino_fd.name)
 
 
 	Thread(target = check_presence).start()
