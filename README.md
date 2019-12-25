@@ -6,6 +6,7 @@ Run the next commands:
 
 ```bash
 cd Linux
+sudo pip3 install pyserial pyinotify
 chmod +x install.sh
 sudo ./install.sh
 ```
