@@ -30,3 +30,11 @@ sudo systemctl start trash-items-counter@$USER.service
 ```bash
 sudo systemctl stop trash-items-counter@$USER.service
 ```
+
+# Lego
+
+Use [instruction](Lego/instruction.html) to build your Lego corpus.
+
+# Images
+
+![](Corpus.jpg)
