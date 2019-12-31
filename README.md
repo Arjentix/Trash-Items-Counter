@@ -1,6 +1,16 @@
-# Linux
+# Trash Items Counter
 
-## Installing
+This is a simple pet-project. It's counting items in your trash folder and prints it to the 4-digits 7-segment display. It is working on *Linux* and *Windows*.
+
+By using this code you can create your own device, that will display anything you need, so feel free to try it.
+
+## Hardware
+
+As a hardware I am using *Arduino Nano* and *TM1637* green display.
+
+## Linux
+
+### Installing
 
 Run the next commands:
 
@@ -11,7 +21,7 @@ chmod +x install.sh
 sudo ./install.sh
 ```
 
-## Running
+### Running
 
 To enable running scipt on startup run the following:
 
@@ -25,15 +35,15 @@ If you want to start it only now run this instead:
 sudo systemctl start trash-items-counter@$USER.service
 ```
 
-## Stopping
+### Stopping
 
 ```bash
 sudo systemctl stop trash-items-counter@$USER.service
 ```
 
-# Windows
+## Windows
 
-## Installing
+### Installing
 
 To run program on startup follow the next steps:
 
@@ -41,10 +51,10 @@ To run program on startup follow the next steps:
 2. Hit *Win+R* and type *shell:startup*
 3. Copy shortcut to the openned Strartup folder
 
-# Lego
+## Lego
 
 Use [instruction](Lego/instruction.html) to build your Lego corpus.
 
-# Images
+## Images
 
 ![](Corpus.jpg)
