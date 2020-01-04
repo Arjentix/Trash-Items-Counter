@@ -55,6 +55,6 @@ To run program on startup follow the next steps:
 
 Use [instruction](Lego/instruction.html) to build your Lego corpus.
 
-## Images
+## Image
 
 ![](Corpus.jpg)
