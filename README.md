@@ -61,6 +61,16 @@ sudo systemctl stop trash-items-counter@$USER.service
 
 ## Windows
 
+### Usage
+
+You can specify a port device connected to using `-p` flag (see your port in *Device Manager*). By default *COM3* is using.
+
+You can specify a directory to observe using `-d` flag. By default *Trash* directory is using.
+
+> To pass flag option in startup script you should insert it to the [Counter.bat](Windows/Counter.bat) file.
+
+Example: `wscript.exe "InvisibleCounter.vbs" "Counter.exe" -p COM5 -d D:Movies`
+
 ### Installing
 
 To run program on startup follow the next steps:
