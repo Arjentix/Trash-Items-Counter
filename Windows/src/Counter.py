@@ -11,23 +11,9 @@ import win32con
 serial_port = 'COM3'
 arduino_ser = serial.Serial()
 user = ''
-trash_dir = os.path.abspath ("C:\$Recycle.Bin\S-1-5-21-1204911413-2226659614-3970885936-1001")
+trash_dir = None
 timeout = 5
 mutex = Lock()
-
-#
-# FindFirstChangeNotification sets up a handle for watching
-#  file changes. The first parameter is the path to be
-#  watched; the second is a boolean indicating whether the
-#  directories underneath the one specified are to be watched;
-#  the third is a list of flags as to what kind of changes to
-#  watch for. We're just looking at file additions / deletions.
-#
-change_handle = win32file.FindFirstChangeNotification (
-	trash_dir,
-	0,
-	win32con.FILE_NOTIFY_CHANGE_FILE_NAME
-)
 
 def check_presence():
 	global arduino_ser
@@ -93,13 +79,26 @@ if __name__ == '__main__':
 	user_sid = bytes.decode(subprocess.check_output("wmic useraccount where name=\"%username%\" get sid", shell=True))
 	user_sid = user_sid[4:].strip()
 	print('User sid: {}'.format(user_sid))
+
 	trash_dir = 'C:\$Recycle.Bin\{}'.format(user_sid)
+
+	#
+	# FindFirstChangeNotification sets up a handle for watching
+	#  file changes. The first parameter is the path to be
+	#  watched; the second is a boolean indicating whether the
+	#  directories underneath the one specified are to be watched;
+	#  the third is a list of flags as to what kind of changes to
+	#  watch for. We're just looking at file additions / deletions.
+	#
+	change_handle = win32file.FindFirstChangeNotification (
+		trash_dir,
+		0,
+		win32con.FILE_NOTIFY_CHANGE_FILE_NAME
+	)
 
 	if len(sys.argv) >= 2:
 		serial_port = sys.argv[1]
-
 	connect_to_serial(serial_port)
-	
 	print('Connected to ' + arduino_ser.name)
 
 
