@@ -9,6 +9,7 @@ import win32file
 import win32event
 import win32con
 
+trash_mode = True
 serial_port = 'COM3'
 arduino_ser = serial.Serial()
 user = ''
@@ -50,7 +51,9 @@ def print_count():
 
 	# Windows has an extra .ini in RecycleBin so there is a -1
 	# Also Windows has an extra file for every file in RecycleBin (except the one described above) so there is a /2
-	count = int((len(os.listdir(observed_dir)) - 1) / 2)
+	count = int((len(os.listdir(observed_dir)) - 1))
+	if trash_mode:
+		count /= 2
 	print('Items in directory: {}'.format(count))
 
 	try:
@@ -88,6 +91,7 @@ if __name__ == '__main__':
 			serial_port = arg
 		elif opt == '-d':
 			observed_dir = arg
+			trash_mode = False
 
 	#
 	# FindFirstChangeNotification sets up a handle for watching
