@@ -1,4 +1,5 @@
 import sys
+import getopt
 import os
 import serial
 import subprocess
@@ -11,7 +12,7 @@ import win32con
 serial_port = 'COM3'
 arduino_ser = serial.Serial()
 user = ''
-trash_dir = None
+observed_dir = None
 timeout = 5
 mutex = Lock()
 
@@ -27,14 +28,6 @@ def check_presence():
 			time.sleep(2)
 			print_count()
 
-		'''
-		print("Readed: '" + byte_string.decode('utf-8') + "'")
-		if byte_string == b'':
-			print('Arduino was disconnected')
-			connect_to_serial(arduino_ser.name)
-			time.sleep(2)
-			print_count(None)
-			'''
 
 def connect_to_serial(path, close=True):
 	mutex.acquire()
@@ -53,12 +46,12 @@ def connect_to_serial(path, close=True):
 	mutex.release()
 
 def print_count():
-	global arduino_ser, trash_dir
+	global arduino_ser, observed_dir
 
 	# Windows has an extra .ini in RecycleBin so there is a -1
 	# Also Windows has an extra file for every file in RecycleBin (except the one described above) so there is a /2
-	count = int((len(os.listdir(trash_dir)) - 1) / 2)
-	print('Items in trash: {}'.format(count))
+	count = int((len(os.listdir(observed_dir)) - 1) / 2)
+	print('Items in directory: {}'.format(count))
 
 	try:
 		arduino_ser.write(str.encode(' ' + str(count)))
@@ -76,11 +69,25 @@ def print_count():
 #
 
 if __name__ == '__main__':
+	argv = sys.argv[1:]
+
+	# Setting default value for observed_dir
 	user_sid = bytes.decode(subprocess.check_output("wmic useraccount where name=\"%username%\" get sid", shell=True))
 	user_sid = user_sid[4:].strip()
 	print('User sid: {}'.format(user_sid))
+	observed_dir = 'C:\$Recycle.Bin\{}'.format(user_sid)
 
-	trash_dir = 'C:\$Recycle.Bin\{}'.format(user_sid)
+	try:
+		opts, args = getopt.getopt(argv, 'p:d:')
+	except getopt.GetoptError:
+		print('Run with: python ' + sys.argv[0] + '[-p <port>] [-d <directory]')
+		sys.exit(2)
+
+	for opt, arg in opts:
+		if opt == '-p':
+			serial_port = arg
+		elif opt == '-d':
+			observed_dir = arg
 
 	#
 	# FindFirstChangeNotification sets up a handle for watching
@@ -91,13 +98,11 @@ if __name__ == '__main__':
 	#  watch for. We're just looking at file additions / deletions.
 	#
 	change_handle = win32file.FindFirstChangeNotification (
-		trash_dir,
+		observed_dir,
 		0,
 		win32con.FILE_NOTIFY_CHANGE_FILE_NAME
 	)
 
-	if len(sys.argv) >= 2:
-		serial_port = sys.argv[1]
 	connect_to_serial(serial_port)
 	print('Connected to ' + arduino_ser.name)
 
