@@ -7,6 +7,7 @@
 
 import functools
 import sys
+import getopt 
 import serial
 import pyinotify
 import os
@@ -16,7 +17,7 @@ from threading import Thread, Lock
 serial_port = '/dev/ttyUSB0'
 arduino_ser = serial.Serial()
 user = ''
-trash_dir = ''
+observed_dir = ''
 timeout = 5
 mutex = Lock()
 
@@ -52,9 +53,9 @@ def connect_to_serial(path, close=True):
 	mutex.release()
 
 def print_count(event):
-	global arduino_ser, trash_dir
+	global arduino_ser, observed_dir
 
-	count = len(os.listdir(trash_dir))
+	count = len(os.listdir(observed_dir))
 	print('Items in trash: {}'.format(count))
 
 	try:
@@ -69,14 +70,32 @@ def print_count(event):
 
 if __name__ == "__main__":
 
-	if len(sys.argv) < 2:
-		sys.exit('Run with: python3 ' + sys.argv[0] + ' $USER')
-	
-	user = sys.argv[1]
-	trash_dir = '/home/' + user + '/.local/share/Trash/files'
+	argv = sys.argv[1:]
+	# Setting default values
+	user = ''
+	observed_dir = ''
 
-	if len(sys.argv) >= 3:
-		serial_port = sys.argv[2]
+	try:
+		opts, args = getopt.getopt(argv, 'u:p:d:')
+	except getopt.GetoptError:
+		print('Run with: python3 ' + sys.argv[0] + ' -u $USER [-p port] [-d directory]')
+		sys.exit(2)
+
+	for opt, arg in opts:
+		if opt == '-u':
+			user = arg
+		elif opt == '-p':
+			serial_port = arg
+		elif opt == '-d':
+			observed_dir = arg
+
+	if user == '' and observed_dir == '':
+		print('Run with: python3 ' + sys.argv[0] + ' -u $USER [-p port] [-d directory]')
+		print('Or with: python3 ' + sys.argv[0] + ' -d <directory> [-p port] [-u <usrename>]')
+		sys.exit(2)
+	if observed_dir == '':
+		# Trash dir by default
+		observed_dir = '/home/' + user + '/.local/share/Trash/files'
 
 	try:
 		arduino_ser = open(serial_port, 'rb+', buffering=0)
@@ -95,7 +114,7 @@ if __name__ == "__main__":
 	# Setting directory event handler
 	wm = pyinotify.WatchManager()
 	notifier = pyinotify.Notifier(wm, print_count)
-	wm.add_watch(trash_dir, pyinotify.IN_CREATE | pyinotify.IN_DELETE | pyinotify.IN_MOVED_FROM | pyinotify.IN_MOVED_TO)
+	wm.add_watch(observed_dir, pyinotify.IN_CREATE | pyinotify.IN_DELETE | pyinotify.IN_MOVED_FROM | pyinotify.IN_MOVED_TO)
 
 	try:
 		notifier.loop(
