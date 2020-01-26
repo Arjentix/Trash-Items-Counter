@@ -1,8 +1,8 @@
-# Trash Items Counter
+# Unread Gmail Messages Counter
 
-This is a simple pet-project. It's counting items in your trash folder and prints it to the 4-digits 7-segment display. It is working on *Linux* and *Windows*.
+This is a extra branch with another usage of original project. It's counting unread messages in your gmail account and prints it to the 4-digits 7-segment display. It is working on *Linux* and *Windows*.
 
-> It can also counts files in any directory provided by -d flag
+> It is using *active* listenning. This means, that it sleep for some *timeout* and then asks Google API for messages. This was done cause of simplicity, because in another way there should be a *server* for Google Webhooks.
 
 By using this code you can create your own device, that will display anything you need, so feel free to try it.
 
@@ -14,19 +14,25 @@ As a hardware I am using *Arduino Nano* and *TM1637* green display.
 
 ### Usage
 
-If you want to run it manually then you have to provide either *username* or *directory*.
+If you want to run it manually then you can run it like this:
 
-To provide username use: `python3 src/Counter.py -u $USER`
+```bash
+python3 src/Counter.py
+```
 
-To provide directory use: `python3 src/Counter.py -d <directory>`
+You can also specify:
 
-You can also specify port device connected to by using `-p` flag.
+* port device connected to by using `-p` flag. Default is: `/dev/tty/USB0`
+* path to credentials.json file. Default is: `credentials.json`
+* timeout to sleep by using `-t` flag. Default is: `300` seconds;
 
-Example: `python3 src/Counter.py -d <directory> -p /dev/ttyUSB1`
+Example:
 
-By default */dev/ttyUSB0* is using.
+```bash
+python3 src/Counter.py -f ~/credentials.json -p /dev/ttyUSB1 -t 600
+```
 
-If you want to run it as a daemon service (see below) but with custom flag options then change `ExecStart` item in the [trash-items-counter@.service](Linux/trash-items-counter@.service)
+If you want to run it as a daemon service (see below) but with custom flag options then change `ExecStart` item in the [trash-items-counter.service](Linux/trash-items-counter.service)
 
 ### Installing
 
@@ -34,29 +40,45 @@ Run the next commands:
 
 ```bash
 cd Linux
-sudo pip3 install pyserial pyinotify
+sudo pip3 install --upgrade pyserial google-api-python-client google-auth-httplib2 google-auth-oauthlib
 chmod +x install.sh
 sudo ./install.sh
 ```
 
+Put file named `credentials.json` in the */etc/* directory. This is your own file from Google API, get it there: [https://console.developers.google.com/apis/credentials](https://console.developers.google.com/apis/credentials)
+
 ### Running
+
+#### First time
+
+In the first time you have to run in like that:
+
+```bash
+pyhton3 src/Counter.py -f /etc/credentials.json
+```
+
+This will promote you to give some permissons and creates a new file names token.pickle. It's a file used in Google API. Move it to the */etc/* directory.
+
+Mooving to the */etc/* directory is needed for daemon running.
+
+#### Not first time
 
 To enable running scipt on startup run the following:
 
 ```bash
-sudo systemctl enable trash-items-counter@$USER.service
+sudo systemctl enable trash-items-counter.service
 ```
 
 If you want to start it only now run this instead:
 
 ```bash
-sudo systemctl start trash-items-counter@$USER.service
+sudo systemctl start trash-items-counter.service
 ```
 
 ### Stopping
 
 ```bash
-sudo systemctl stop trash-items-counter@$USER.service
+sudo systemctl stop trash-items-counter.service
 ```
 
 ## Windows
