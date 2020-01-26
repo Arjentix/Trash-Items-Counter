@@ -1,10 +1,10 @@
 [Unit]
-Description=Counter of items in trash folder
+Description=Counter of unread gmail messages
 After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /usr/bin/Counter.py
+ExecStart=/usr/bin/python3 /usr/bin/Counter.py -f /etc/credentials.json --pickle /etc/token.pickle
 
 [Install]
 WantedBy=multi-user.target
