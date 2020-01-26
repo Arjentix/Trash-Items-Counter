@@ -4,9 +4,7 @@ After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /usr/bin/Counter.py -u %i
-User=%i
-
+ExecStart=/usr/bin/python3 /usr/bin/Counter.py
 
 [Install]
 WantedBy=multi-user.target
