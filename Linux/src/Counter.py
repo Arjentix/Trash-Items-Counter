@@ -23,7 +23,7 @@ service = None
 timeout = 5
 mutex = Lock()
 
-def init_gmail_api_service():
+def init_gmail_api_service(cred_path):
     creds = None
     # The file token.pickle stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -37,7 +37,7 @@ def init_gmail_api_service():
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
+                cred_path, SCOPES)
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
         with open('token.pickle', 'wb') as token:
@@ -122,20 +122,23 @@ def main():
   argv = sys.argv[1:]
 
   gmail_timeout = 300;
+  cred_path = 'credentials.json'
 
   try:
-    opts, args = getopt.getopt(argv, 'p:t:')
+    opts, args = getopt.getopt(argv, 'p:f:t:')
   except getopt.GetoptError:
-    print('Run with: python3 ' + sys.argv[0] + '[-p <port>] [-t <timeout>]')
+    print('Run with: python3 ' + sys.argv[0] + '[-p <port>] [-f <path-to-credentials.json>] [-t <timeout>]')
     sys.exit(2)
 
   for opt, arg in opts:
     if opt == '-p':
       serial_port = arg
+    elif opt == '-f':
+      cred_path = arg
     elif opt == '-t':
       gmail_timeout = int(arg)
 
-  service = init_gmail_api_service()
+  service = init_gmail_api_service(cred_path)
   try:
     arduino_ser = open(serial_port, 'rb+', buffering=0)
   except FileNotFoundError:
