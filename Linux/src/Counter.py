@@ -23,13 +23,13 @@ service = None
 timeout = 5
 mutex = Lock()
 
-def init_gmail_api_service(cred_path):
+def init_gmail_api_service(cred_path, token_path):
     creds = None
     # The file token.pickle stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
+    if os.path.exists(token_path):
+        with open(token_path, 'rb') as token:
             creds = pickle.load(token)
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
@@ -40,7 +40,7 @@ def init_gmail_api_service(cred_path):
                 cred_path, SCOPES)
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
-        with open('token.pickle', 'wb') as token:
+        with open(token_path, 'wb') as token:
             pickle.dump(creds, token)
     return build('gmail', 'v1', credentials=creds)
 
@@ -123,22 +123,25 @@ def main():
 
   gmail_timeout = 300;
   cred_path = 'credentials.json'
+  pickle_path = 'token.pickle'
 
   try:
-    opts, args = getopt.getopt(argv, 'p:f:t:')
+    opts, args = getopt.getopt(argv, 'p:f:t:', ['port=', 'file=', 'timeout=', 'pickle='])
   except getopt.GetoptError:
-    print('Run with: python3 ' + sys.argv[0] + '[-p <port>] [-f <path-to-credentials.json>] [-t <timeout>]')
+    print('Run with: python3 ' + sys.argv[0] + '[-p <port>] [-f <path-to-credentials.json>] [-t <timeout>] [--pickle <path-to-token.pickle>]')
     sys.exit(2)
 
   for opt, arg in opts:
-    if opt == '-p':
+    if opt in ('-p', '--port'):
       serial_port = arg
-    elif opt == '-f':
+    elif opt in ('-f', '--file'):
       cred_path = arg
-    elif opt == '-t':
+    elif opt in ('-t', '--timeout'):
       gmail_timeout = int(arg)
+    elif opt == '--pickle':
+      pickle_path = arg
 
-  service = init_gmail_api_service(cred_path)
+  service = init_gmail_api_service(cred_path, pickle_path)
   try:
     arduino_ser = open(serial_port, 'rb+', buffering=0)
   except FileNotFoundError:
