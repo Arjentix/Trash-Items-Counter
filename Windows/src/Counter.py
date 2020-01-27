@@ -1,134 +1,162 @@
-import sys
-import getopt
-import os
-import serial
-import subprocess
-import time
-from threading import Thread, Lock
-import win32file
-import win32event
-import win32con
+'''
+@author: Polyakov Daniil
+@mail: arjentix@gmail.com
+@github: Arjentix
+@date: 27.01.2020
+'''
 
-trash_mode = True
+import pickle
+import os.path
+from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+import sys
+import time
+import getopt
+import serial
+from threading import Thread, Lock
+
+SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 serial_port = 'COM3'
 arduino_ser = serial.Serial()
-user = ''
-observed_dir = None
+service = None
 timeout = 5
 mutex = Lock()
 
+def init_gmail_api_service(cred_path, token_path):
+    creds = None
+    # The file token.pickle stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists(token_path):
+        with open(token_path, 'rb') as token:
+            creds = pickle.load(token)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                cred_path, SCOPES)
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open(token_path, 'wb') as token:
+            pickle.dump(creds, token)
+    return build('gmail', 'v1', credentials=creds)
+
+def count_unread(service):
+    # Call the Gmail API
+    results = (
+      service
+      .users()
+      .threads()
+      .list(userId='me', q='in:inbox is:unread -label:social -label:promotions')
+      .execute()
+     )
+    unread_count = len(results['threads'])
+    while 'nextPageToken' in results:
+      next_page_token = results['nextPageToken']
+      results = (
+        service
+        .users()
+        .threads()
+        .list(
+          userId='me',
+          q='in:inbox is:unread -label:social -label:promotions',
+          pageToken=next_page_token
+         )
+        .execute()
+      )
+      unread_count += len(results['threads'])
+    
+    return unread_count
+
 def check_presence():
-	global arduino_ser
+  global arduino_ser
 
-	while True:
-		try:
-			arduino_ser.read()
-		except serial.SerialException:
-			print('Arduino was disconnected')
-			connect_to_serial(arduino_ser.name)
-			time.sleep(2)
-			print_count()
-
-
-def connect_to_serial(path, close=True):
-	mutex.acquire()
-	global arduino_ser
-
-	while True:
-		try:
-			if close == True:
-				arduino_ser.close()
-
-			arduino_ser = serial.Serial(path, 9600)
-			break
-		except serial.SerialException:
-			print("Can't connect to the serial port '{}'. Waiting for {} seconds".format(path, timeout))
-			time.sleep(timeout)
-	mutex.release()
+  while True:
+    try:
+      arduino_ser.read()
+    except serial.SerialException:
+      print('Arduino was disconnected')
+      connect_to_serial(arduino_ser.name)
+      time.sleep(2)
+      print('Connection established')
+      print_count()
 
 def print_count():
-	global arduino_ser, observed_dir
+  global service
 
-	# Windows has an extra .ini in RecycleBin so there is a -1
-	# Also Windows has an extra file for every file in RecycleBin (except the one described above) so there is a /2
-	count = int((len(os.listdir(observed_dir)) - 1))
-	if trash_mode:
-		count /= 2
-	print('Items in directory: {}'.format(count))
+  count = count_unread(service)
+  print('Unread messages: {}'.format(count))
 
-	try:
-		arduino_ser.write(str.encode(' ' + str(count)))
-	except ValueError:
-		print("Failed to write to the serial port. Trying to reestablish connection...")
-		connect_to_serial(arduino_ser.name)
-		print("Connection established")
-		time.sleep(2)
-		arduino_ser.write(str.encode(' ' + str(count)))
+  try:
+    arduino_ser.write(str.encode(' ' + str(count)))
+  except ValueError:
+    print("Failed to write to the serial port. Trying to reestablish connection...")
+    connect_to_serial(arduino_ser.name)
+    print("Connection established")
+    time.sleep(2)
+    arduino_ser.write(str.encode(' ' + str(count)))
 
-#
-# Loop forever, listing any file changes. The WaitFor... will
-#  time out every half a second allowing for keyboard interrupts
-#  to terminate the loop.
-#
+def connect_to_serial(path, close=True):
+  mutex.acquire()
+  global arduino_ser
+
+  while True:
+    try:
+      if close == True:
+        arduino_ser.close()
+
+      arduino_ser = serial.Serial(path, 9600)
+      break
+    except (IOError, FileNotFoundError):
+      print("Can't connect to the serial port '{}'. Waiting for {} seconds".format(path, timeout))
+      time.sleep(timeout)
+  mutex.release()
+
+def main():
+  global arduino_ser, serial_port, service
+  argv = sys.argv[1:]
+
+  gmail_timeout = 300;
+  cred_path = 'credentials.json'
+  pickle_path = 'token.pickle'
+
+  try:
+    opts, args = getopt.getopt(argv, 'p:f:t:', ['port=', 'file=', 'timeout=', 'pickle='])
+  except getopt.GetoptError:
+    print('Run with: python ' + sys.argv[0] + '[-p <port>] [-f <path-to-credentials.json>] [-t <timeout>] [--pickle <path-to-token.pickle>]')
+    sys.exit(2)
+
+  for opt, arg in opts:
+    if opt in ('-p', '--port'):
+      serial_port = arg
+    elif opt in ('-f', '--file'):
+      cred_path = arg
+    elif opt in ('-t', '--timeout'):
+      gmail_timeout = int(arg)
+    elif opt == '--pickle':
+      pickle_path = arg
+
+  service = init_gmail_api_service(cred_path, pickle_path)
+
+  connect_to_serial(serial_port)
+  print('Connected to ' + arduino_ser.name)
+
+
+  Thread(target = check_presence).start()
+
+  # Inital print
+  time.sleep(2)
+  print_count()
+
+  try:
+    while True:
+      time.sleep(gmail_timeout)
+      print_count()
+  finally:
+    os._exit(0)
 
 if __name__ == '__main__':
-	argv = sys.argv[1:]
-
-	# Setting default value for observed_dir
-	user_sid = bytes.decode(subprocess.check_output("wmic useraccount where name=\"%username%\" get sid", shell=True))
-	user_sid = user_sid[4:].strip()
-	print('User sid: {}'.format(user_sid))
-	observed_dir = 'C:\$Recycle.Bin\{}'.format(user_sid)
-
-	try:
-		opts, args = getopt.getopt(argv, 'p:d:')
-	except getopt.GetoptError:
-		print('Run with: python ' + sys.argv[0] + '[-p <port>] [-d <directory]')
-		sys.exit(2)
-
-	for opt, arg in opts:
-		if opt == '-p':
-			serial_port = arg
-		elif opt == '-d':
-			observed_dir = arg
-			trash_mode = False
-
-	#
-	# FindFirstChangeNotification sets up a handle for watching
-	#  file changes. The first parameter is the path to be
-	#  watched; the second is a boolean indicating whether the
-	#  directories underneath the one specified are to be watched;
-	#  the third is a list of flags as to what kind of changes to
-	#  watch for. We're just looking at file additions / deletions.
-	#
-	change_handle = win32file.FindFirstChangeNotification (
-		observed_dir,
-		0,
-		win32con.FILE_NOTIFY_CHANGE_FILE_NAME
-	)
-
-	connect_to_serial(serial_port)
-	print('Connected to ' + arduino_ser.name)
-
-
-	Thread(target = check_presence).start()
-
-	# Inital print
-	time.sleep(2)
-	print_count()
-
-	try:
-		while True:
-			result = win32event.WaitForSingleObject (change_handle, 500)
-
-			#
-			# If the WaitFor... returned because of a notification (as
-			#  opposed to timing out or some error)
-			#
-			if result == win32con.WAIT_OBJECT_0:
-				print_count()
-				win32file.FindNextChangeNotification (change_handle)
-
-	finally:
-		win32file.FindCloseChangeNotification (change_handle)
-		os._exit(0)
+    main()
