@@ -23,7 +23,8 @@ python3 src/Counter.py
 You can also specify:
 
 * port device connected to by using `-p` flag. Default is: `/dev/tty/USB0`
-* path to credentials.json file. Default is: `credentials.json`
+* path to credentials.json file by using `-f` flag. Default is: `credentials.json`
+* path to token.pickle file by using `--pickle` flag. Default is: `token.pickle`
 * timeout to sleep by using `-t` flag. Default is: `300` seconds;
 
 Example:
@@ -85,15 +86,28 @@ sudo systemctl stop trash-items-counter.service
 
 ### Usage
 
-You can specify a port device connected to using `-p` flag (see your port in *Device Manager*). By default *COM3* is using.
+#### First time
 
-You can specify a directory to observe using `-d` flag. By default *Trash* directory is using.
+Put file named `credentials.json` in the current directory. This is your own file from Google API, get it there: [https://console.developers.google.com/apis/credentials](https://console.developers.google.com/apis/credentials)
+
+In the first time you have to run it manually so it can creates a *pickle* file needed fo Google API. Just run *Counter.exe* file and the program will promote you to give some permission for your gmail.
+
+#### Not first time
+
+You can specify:
+
+* port device connected to by using `-p` flag. Default is: `COM3`. See your port in the *Device Manager*.
+* path to credentials.json file by using `-f` flag. Default is: `credentials.json`
+* path to token.pickle file by using `--pickle` flag. Default is: `token.pickle`
+* timeout to sleep by using `-t` flag. Default is: `300` seconds;
 
 > To pass flag option in startup script you should insert it to the [Counter.bat](Windows/Counter.bat) file.
 
-Example: `wscript.exe "InvisibleCounter.vbs" "Counter.exe" -p COM5 -d D:Movies`
+Example: `wscript.exe "InvisibleCounter.vbs" "Counter.exe" -p COM5 -t 600`
 
 ### Installing
+
+> Make sure you've read the *Usage* section
 
 To run program on startup follow the next steps:
 
