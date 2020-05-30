@@ -24,52 +24,51 @@ timeout = 5
 mutex = Lock()
 
 def init_gmail_api_service(cred_path, token_path):
-    creds = None
-    # The file token.pickle stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists(token_path):
-        with open(token_path, 'rb') as token:
-            creds = pickle.load(token)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                cred_path, SCOPES)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open(token_path, 'wb') as token:
-            pickle.dump(creds, token)
-    return build('gmail', 'v1', credentials=creds)
+  creds = None
+  # The file token.pickle stores the user's access and refresh tokens, and is
+  # created automatically when the authorization flow completes for the first
+  # time.
+  if os.path.exists(token_path):
+    with open(token_path, 'rb') as token:
+        creds = pickle.load(token)
+  # If there are no (valid) credentials available, let the user log in.
+  if not creds or not creds.valid:
+    if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+    else:
+        flow = InstalledAppFlow.from_client_secrets_file(cred_path, SCOPES)
+        creds = flow.run_local_server(port=0)
+    # Save the credentials for the next run
+    with open(token_path, 'wb') as token:
+      pickle.dump(creds, token)
+  return build('gmail', 'v1', credentials=creds)
 
 def count_unread(service):
-    # Call the Gmail API
+  # Call the Gmail API
+  results = (
+    service
+    .users()
+    .threads()
+    .list(userId='me', q='in:inbox is:unread -label:social -label:promotions')
+    .execute()
+    )
+  unread_count = len(results['threads'])
+  while 'nextPageToken' in results:
+    next_page_token = results['nextPageToken']
     results = (
       service
       .users()
       .threads()
-      .list(userId='me', q='in:inbox is:unread -label:social -label:promotions')
+      .list(
+        userId='me',
+        q='in:inbox is:unread -label:social -label:promotions',
+        pageToken=next_page_token
+        )
       .execute()
-     )
-    unread_count = len(results['threads'])
-    while 'nextPageToken' in results:
-      next_page_token = results['nextPageToken']
-      results = (
-        service
-        .users()
-        .threads()
-        .list(
-          userId='me',
-          q='in:inbox is:unread -label:social -label:promotions',
-          pageToken=next_page_token
-         )
-        .execute()
-      )
-      unread_count += len(results['threads'])
-    
-    return unread_count
+    )
+    unread_count += len(results['threads'])
+  
+  return unread_count
 
 def check_presence():
   global arduino_ser
