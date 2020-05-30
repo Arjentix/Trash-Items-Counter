@@ -51,22 +51,24 @@ def count_unread(service):
     .threads()
     .list(userId='me', q='in:inbox is:unread -label:social -label:promotions')
     .execute()
-    )
-  unread_count = len(results['threads'])
-  while 'nextPageToken' in results:
-    next_page_token = results['nextPageToken']
-    results = (
-      service
-      .users()
-      .threads()
-      .list(
-        userId='me',
-        q='in:inbox is:unread -label:social -label:promotions',
-        pageToken=next_page_token
-        )
-      .execute()
-    )
-    unread_count += len(results['threads'])
+  )
+  unread_count = 0
+  if 'threads' in results:
+    unread_count = len(results['threads'])
+    while 'nextPageToken' in results:
+      next_page_token = results['nextPageToken']
+      results = (
+        service
+        .users()
+        .threads()
+        .list(
+          userId='me',
+          q='in:inbox is:unread -label:social -label:promotions',
+          pageToken=next_page_token
+          )
+        .execute()
+      )
+      unread_count += len(results['threads'])
   
   return unread_count
 
